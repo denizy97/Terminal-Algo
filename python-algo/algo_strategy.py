@@ -51,6 +51,7 @@ class AlgoStrategy(gamelib.AlgoCore):
         self.sidesAttacked["mid"] = 0.
         self.sidesAttacked["left"] = 0.
         self.destructor_locations = [[3,13],[24,13],[10,13],[17,13]]
+        self.destructors_nextturn = []
 
     def on_turn(self, turn_state):
         """
@@ -65,13 +66,14 @@ class AlgoStrategy(gamelib.AlgoCore):
         game_state.suppress_warnings(True)  #Comment or remove this line to enable warnings.
         if game_state.turn_number > 0:
             #self.find_side_attacked(game_state, True)
-            for idx in range(len(self.destructor_locations)):
-                if game_state.can_spawn(DESTRUCTOR, [self.destructor_locations[idx][0], self.destructor_locations[idx][1]-1]) and not game_state.contains_stationary_unit(self.destructor_locations[idx]):
-                    self.destructor_locations.append([self.destructor_locations[idx][0], self.destructor_locations[idx][1]-1])
-                elif game_state.can_spawn(DESTRUCTOR, [self.destructor_locations[idx][0]+1, self.destructor_locations[idx][1]]) and not game_state.contains_stationary_unit(self.destructor_locations[idx]):
-                    self.destructor_locations.append([self.destructor_locations[idx][0]+1, self.destructor_locations[idx][1]])
-                elif game_state.can_spawn(DESTRUCTOR, [self.destructor_locations[idx][0]-1, self.destructor_locations[idx][1]]) and not game_state.contains_stationary_unit(self.destructor_locations[idx]):
-                    self.destructor_locations.append([self.destructor_locations[idx][0]-1, self.destructor_locations[idx][1]])
+            num_destructor = len(self.destructor_locations)
+            for idx in range(num_destructor):
+                if [self.destructor_locations[idx][0], self.destructor_locations[idx][1]-1] not in self.destructor_locations and game_state.can_spawn(DESTRUCTOR, [self.destructor_locations[idx][0], self.destructor_locations[idx][1]-1]) and not game_state.contains_stationary_unit(self.destructor_locations[idx]):
+                    self.destructors_nextturn.append([self.destructor_locations[idx][0], self.destructor_locations[idx][1]-1])
+                elif [self.destructor_locations[idx][0]+1, self.destructor_locations[idx][1]] not in self.destructor_locations and game_state.can_spawn(DESTRUCTOR, [self.destructor_locations[idx][0]+1, self.destructor_locations[idx][1]]) and not game_state.contains_stationary_unit(self.destructor_locations[idx]):
+                    self.destructors_nextturn.append([self.destructor_locations[idx][0]+1, self.destructor_locations[idx][1]])
+                elif [self.destructor_locations[idx][0]-1, self.destructor_locations[idx][1]] not in self.destructor_locations and game_state.can_spawn(DESTRUCTOR, [self.destructor_locations[idx][0]-1, self.destructor_locations[idx][1]]) and not game_state.contains_stationary_unit(self.destructor_locations[idx]):
+                    self.destructors_nextturn.append([self.destructor_locations[idx][0]-1, self.destructor_locations[idx][1]])
         #gamelib.debug_write('sides: {}'.format(self.sidesAttacked))
         self.DenizStrat(game_state)
         #self.find_side_attacked(game_state, False)
@@ -144,6 +146,16 @@ class AlgoStrategy(gamelib.AlgoCore):
         #destructor_locations = [[1,13],[26,13],[5,12],[22,12],[9,12],[18,12]]
         #filter_locations = [[12,13],[15,13],[13,13],[14,13],[0,13],[27,13],[8,13],[19,13],[7,13],[20,13],[6,13],[21,13],[5,13],[22,13],[1,13],[26,13],[0,13],[27,13]]
         game_state.attempt_spawn(DESTRUCTOR, self.destructor_locations)
+        if self.destructors_nextturn:
+            game_state.attempt_spawn(DESTRUCTOR, self.destructors_nextturn)
+            num_nextturn = len(self.destructors_nextturn)
+            to_be_popped = []
+            for idx in range(num_nextturn):
+                if game_state.contains_stationary_unit(self.destructors_nextturn[idx]):
+                    to_be_popped.append(idx)
+            for i in reversed(to_be_popped):
+                self.destructor_locations.append(self.destructors_nextturn.pop(i))
+            to_be_popped.clear()
         #game_state.attempt_spawn(FILTER, filter_locations)
 #        if self.sidesAttacked["left"] >= 0.9 and self.sidesAttacked["left"] >= self.sidesAttacked["mid"] and self.sidesAttacked["left"] >= self.sidesAttacked["right"]:
 #            game_state.attempt_spawn(SCRAMBLER, [4,9])
@@ -155,10 +167,12 @@ class AlgoStrategy(gamelib.AlgoCore):
 #            game_state.attempt_spawn(SCRAMBLER, [7,6])
 
     def attack_v2(self, game_state):
-        encryptor_locations = [[13,0],[15,1],[14,2],[13,2],[11,2],[11,3],[12,4],[13,4],[14,4],[15,4],[16,4],[18,4],[18,5],[17,6],[16,6],[15,6],[14,6],[13,6],[12,6],[11,6],[10,6],[9,6],[7,6],[7,7], [8,8],[9,8],[10,8],[11,8],[12,8],[13,8],[14,8],[15,8],[16,8],[17,8],[18,8],[19,8],[20,8],[22,8], [10,5], [15,2], [16,2], [10,3], [18,6], [19,6], [20,6], [22,9], [21,10], [20,10], [19,10], [18,10], [17,10],[16,10],[15,10],[14,10],[13,10],[12,10],[11,10],[10,10],[9,10],[8,10],[7,10],[6,10],[5,10],[3,10]]
+        #old_encryptor_locations = [[13,0],[15,1],[14,2],[13,2],[11,2],[11,3],[12,4],[13,4],[14,4],[15,4],[16,4],[18,4],[18,5],[17,6],[16,6],[15,6],[14,6],[13,6],[12,6],[11,6],[10,6],[9,6],[7,6],[7,7], [8,8],[9,8],[10,8],[11,8],[12,8],[13,8],[14,8],[15,8],[16,8],[17,8],[18,8],[19,8],[20,8],[22,8], [10,5], [15,2], [16,2], [10,3], [18,6], [19,6], [20,6], [22,9], [21,10], [20,10], [19,10], [18,10], [17,10],[16,10],[15,10],[14,10],[13,10],[12,10],[11,10],[10,10],[9,10],[8,10],[7,10],[6,10],[5,10],[3,10]]
+        encryptor_locations = [[13,1],[13,2],[14,2],[12,3],[13,0],[13,3],[14,3],[13,4],[14,4],[14,5]]
         destructor_locations2 = [[1,13],[2,13],[4,12],[5,12],[7,12],[8,12],[10,12],[11,12],[13,12],[14,12],[16,12],[17,12],[19,12],[20,12],[22,12],[23,12],[25,13],[26,13],[0,13],[27,13],[26,12],[1,12]]
         #game_state.attempt_spawn(FILTER, final_filter)
-        if not game_state.can_spawn(DESTRUCTOR, [17,13]):
+        GameMap = gamelib.GameMap(self.config)
+        if not self.destructors_nextturn:
             game_state.attempt_spawn(ENCRYPTOR, encryptor_locations)
         #scrambler_pos = [24,10]
         game_state.attempt_spawn(DESTRUCTOR, destructor_locations2)
@@ -192,6 +206,8 @@ class AlgoStrategy(gamelib.AlgoCore):
                 self.lastSentPing = True
             else:
                 self.lastSentPing = False
+            if game_state.find_path_to_edge([14, 0])[-1] not in GameMap.get_edge_locations(self, GameMap.TOP_LEFT):
+                game_state.attempt_spawn(PING, self.better_spawn_location(game_state, [[15, 1], [11,2]]), self.minPing/2)
             game_state.attempt_spawn(PING, self.better_spawn_location(game_state, [[14, 0], [12,1]]), 1000)
             self.pastHP = game_state.enemy_health
         else:
